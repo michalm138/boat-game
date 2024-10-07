@@ -8,7 +8,7 @@ pygame.init()
 # Constants
 WIDTH, HEIGHT = 800, 600
 FPS = 60
-BOAT_SIZE = (50, 100)  # Fixed boat dimensions
+BOAT_SIZE = (64, 64)  # Fixed boat dimensions
 INITIAL_OBSTACLE_SPAWN_RATE = 120  # Initial obstacle spawn rate (in frames)
 MEDIA_DIR = Path(__file__).parent / "media"
 
@@ -28,12 +28,66 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Boat Adventure")
 
 # Load the boat image
-boat_image = pygame.Surface(BOAT_SIZE)
-boat_image.fill(WHITE)
+boat_image = pygame.image.load(str(MEDIA_DIR / "boat.png"))
+
+# Scale the boat image to the size defined by BOAT_SIZE
+boat_image = pygame.transform.scale(boat_image, BOAT_SIZE)
+
+# Load the heart image
+heart_image = pygame.image.load(str(MEDIA_DIR / "heart.png"))
+heart_image = pygame.transform.scale(heart_image, (32, 32))
 
 # Set up the boat's starting position
-boat_x = WIDTH // 2 - BOAT_SIZE[0] // 2
-boat_y = HEIGHT // 2 - BOAT_SIZE[1] // 2
+boat_start_x = WIDTH // 2 - BOAT_SIZE[0] // 2
+boat_start_y = HEIGHT // 2 - BOAT_SIZE[1] // 2
+boat_x = boat_start_x
+boat_y = boat_start_y
+
+# Define the boat's directions
+UP = 0
+DOWN = 180
+LEFT = 90
+RIGHT = -90
+
+# Initial direction is to the right
+boat_direction = RIGHT
+
+# Number of hearts (lives)
+hearts = 3
+
+
+# Function to rotate the boat image
+def rotate_boat_image(image, angle):
+    return pygame.transform.rotate(image, angle)
+
+
+# Function to check for collisions
+def check_collision(boat_rect, obstacles):
+    for obstacle in obstacles:
+        if not obstacle.warning_active and boat_rect.colliderect(obstacle.rect):
+            return True
+    return False
+
+
+# Function to flash the screen with a semi-transparent red overlay
+def flash_screen(screen, color, alpha, duration):
+    overlay = pygame.Surface((WIDTH, HEIGHT))
+    overlay.set_alpha(alpha)
+    overlay.fill(color)
+    for _ in range(duration):
+        screen.blit(overlay, (0, 0))
+        pygame.display.flip()
+        pygame.time.delay(50)
+
+
+# Function to display game over screen
+def display_game_over(screen):
+    font = pygame.font.Font(None, 74)
+    text = font.render("Game Over", True, (255, 0, 0))
+    text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+    screen.blit(text, text_rect)
+    pygame.display.flip()
+    pygame.time.delay(2000)
 
 
 # Define obstacle class
@@ -60,30 +114,26 @@ class Obstacle:
         self.warning_x = self.x + self.width // 4  # Center the warning horizontally
         self.warning_y = self.y + self.height // 4  # Center the warning vertically
 
+    def update(self):
+        if self.warning_active:
+            self.warning_duration -= 1
+            if self.warning_duration <= 0:
+                self.warning_active = False
+
     def draw(self, screen):
         if self.warning_active:
-            # During warning phase: shaking, transparent, and smaller
-            jitter_x = random.randint(-2, 2)  # Slight horizontal shaking
-            jitter_y = random.randint(-2, 2)  # Slight vertical shaking
-            self.warning_image.set_alpha(self.warning_alpha)  # Set transparency
-
-            # Draw the shaking transparent warning image, centered
-            screen.blit(self.warning_image, (self.warning_x + jitter_x, self.warning_y + jitter_y))
+            self.warning_image.set_alpha(self.warning_alpha)
+            screen.blit(self.warning_image, (self.warning_x, self.warning_y))
         else:
-            # After warning: draw the normal full-size obstacle centered where the warning was
             screen.blit(self.obstacle_image, (self.x, self.y))
 
-    def update(self):
-        self.lifetime -= 1
-
-        # Update the warning phase timer
-        if self.warning_duration > 0:
-            self.warning_duration -= 1
-        else:
-            self.warning_active = False  # End the warning phase after the duration
-
     def is_expired(self):
+        self.lifetime -= 1
         return self.lifetime <= 0
+
+    @property
+    def rect(self):
+        return pygame.Rect(self.x, self.y, self.width, self.height)
 
 
 # List to store obstacles
@@ -109,13 +159,20 @@ while running:
     keys = pygame.key.get_pressed()
     speed = 5
     if keys[pygame.K_LEFT] and boat_x > 0:
+        boat_direction = LEFT
         boat_x -= speed
     if keys[pygame.K_RIGHT] and boat_x < WIDTH - BOAT_SIZE[0]:
+        boat_direction = RIGHT
         boat_x += speed
     if keys[pygame.K_UP] and boat_y > 0:
+        boat_direction = UP
         boat_y -= speed
     if keys[pygame.K_DOWN] and boat_y < HEIGHT - BOAT_SIZE[1]:
+        boat_direction = DOWN
         boat_y += speed
+
+    # Rotate the boat image based on the current direction
+    rotated_boat_image = rotate_boat_image(boat_image, boat_direction)
 
     # Draw the background image
     screen.blit(background_image, (0, 0))
@@ -137,12 +194,23 @@ while running:
         if obstacle.is_expired():
             obstacles.remove(obstacle)
 
-    # Draw shadow for the boat (optional)
-    shadow_rect = pygame.Rect(boat_x, boat_y + BOAT_SIZE[1] // 2, BOAT_SIZE[0], 10)
-    pygame.draw.ellipse(screen, SHADOW_COLOR, shadow_rect)
+    # Draw the rotated boat image
+    boat_rect = rotated_boat_image.get_rect(center=(boat_x + BOAT_SIZE[0] // 2, boat_y + BOAT_SIZE[1] // 2))
+    screen.blit(rotated_boat_image, boat_rect.topleft)
 
-    # Draw the boat without scaling
-    screen.blit(boat_image, (boat_x, boat_y))
+    # Check for collisions
+    if check_collision(boat_rect, obstacles):
+        flash_screen(screen, (255, 0, 0), 20, 8)  # Flash the screen red for 10 frames
+        boat_x = boat_start_x  # Reset boat position
+        boat_y = boat_start_y
+        hearts -= 1  # Decrease the number of hearts
+        if hearts == 0:
+            display_game_over(screen)  # Display game over screen
+            running = False  # End the game loop
+
+    # Draw hearts (lives)
+    for i in range(hearts):
+        screen.blit(heart_image, (10 + i * 40, 10))
 
     # Update the display
     pygame.display.flip()

@@ -14,7 +14,9 @@ MEDIA_DIR = Path(__file__).parent / "media"
 
 # Load the background image
 background_image = pygame.image.load(str(MEDIA_DIR / "background.jpg"))
-background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))  # Scale to match the screen size
+background_image = pygame.transform.scale(
+    background_image, (WIDTH, HEIGHT)
+)  # Scale to match the screen size
 
 # Colors
 WHITE = (255, 255, 255)
@@ -39,11 +41,15 @@ heart_image = pygame.transform.scale(heart_image, (32, 32))
 
 # Load the bullet image
 bullet_image = pygame.image.load(str(MEDIA_DIR / "bullet.png"))
-bullet_image = pygame.transform.scale(bullet_image, (10, 10))  # Scale the bullet image if necessary
+bullet_image = pygame.transform.scale(
+    bullet_image, (10, 10)
+)  # Scale the bullet image if necessary
 
 # Load the boom image
 boom_image = pygame.image.load(str(MEDIA_DIR / "boom.png"))
-boom_image = pygame.transform.scale(boom_image, (64, 64))  # Scale the boom image if necessary
+boom_image = pygame.transform.scale(
+    boom_image, (64, 64)
+)  # Scale the boom image if necessary
 
 # Load the pirate boat image
 pirate_boat_image = pygame.image.load(str(MEDIA_DIR / "pirate-boat.png"))
@@ -128,13 +134,18 @@ class Obstacle:
 
         # Warning phase settings
         self.warning_duration = 100  # The warning lasts for 100 frames
-        self.warning_active = True   # Start in warning mode
-        self.warning_size = (self.width // 2, self.height // 2)  # Smaller size for warning
+        self.warning_active = True  # Start in warning mode
+        self.warning_size = (
+            self.width // 2,
+            self.height // 2,
+        )  # Smaller size for warning
         self.warning_image = pygame.transform.scale(MOUNTAIN_IMAGE, self.warning_size)
         self.warning_alpha = 128  # Transparency for the warning (0-255)
 
         # Full-size obstacle image
-        self.obstacle_image = pygame.transform.scale(MOUNTAIN_IMAGE, (self.width, self.height))
+        self.obstacle_image = pygame.transform.scale(
+            MOUNTAIN_IMAGE, (self.width, self.height)
+        )
 
         # Position the warning image at the center of where the full obstacle will be
         self.warning_x = self.x + self.width // 4  # Center the warning horizontally
@@ -151,7 +162,10 @@ class Obstacle:
             # Add shaking effect
             shake_offset = random.randint(-5, 5)
             self.warning_image.set_alpha(self.warning_alpha)
-            screen.blit(self.warning_image, (self.warning_x + shake_offset, self.warning_y + shake_offset))
+            screen.blit(
+                self.warning_image,
+                (self.warning_x + shake_offset, self.warning_y + shake_offset),
+            )
         else:
             screen.blit(self.obstacle_image, (self.x, self.y))
 
@@ -188,7 +202,9 @@ class Bullet:
 
     @property
     def rect(self):
-        return pygame.Rect(self.x, self.y, self.image.get_width(), self.image.get_height())
+        return pygame.Rect(
+            self.x, self.y, self.image.get_width(), self.image.get_height()
+        )
 
 
 # Define boom class
@@ -330,8 +346,12 @@ while running:
                 bullets.remove(bullet)
                 if obstacle.hit_count <= 0:
                     # Calculate the center position of the obstacle for the boom effect
-                    boom_x = obstacle.x + obstacle.width // 2 - boom_image.get_width() // 2
-                    boom_y = obstacle.y + obstacle.height // 2 - boom_image.get_height() // 2
+                    boom_x = (
+                        obstacle.x + obstacle.width // 2 - boom_image.get_width() // 2
+                    )
+                    boom_y = (
+                        obstacle.y + obstacle.height // 2 - boom_image.get_height() // 2
+                    )
                     booms.append(Boom(boom_x, boom_y))
                     obstacles.remove(obstacle)
                 break
@@ -343,8 +363,16 @@ while running:
                 bullets.remove(bullet)
                 if pirate_boat.hit_count <= 0:
                     # Calculate the center position of the pirate boat for the boom effect
-                    boom_x = pirate_boat.x + pirate_boat.width // 2 - boom_image.get_width() // 2
-                    boom_y = pirate_boat.y + pirate_boat.height // 2 - boom_image.get_height() // 2
+                    boom_x = (
+                        pirate_boat.x
+                        + pirate_boat.width // 2
+                        - boom_image.get_width() // 2
+                    )
+                    boom_y = (
+                        pirate_boat.y
+                        + pirate_boat.height // 2
+                        - boom_image.get_height() // 2
+                    )
                     booms.append(Boom(boom_x, boom_y))
                     pirate_boats.remove(pirate_boat)
                     points += 1  # Increase points counter
@@ -373,7 +401,9 @@ while running:
             pirate_boats.remove(pirate_boat)
 
     # Draw the rotated boat image
-    boat_rect = rotated_boat_image.get_rect(center=(boat_x + BOAT_SIZE[0] // 2, boat_y + BOAT_SIZE[1] // 2))
+    boat_rect = rotated_boat_image.get_rect(
+        center=(boat_x + BOAT_SIZE[0] // 2, boat_y + BOAT_SIZE[1] // 2)
+    )
     screen.blit(rotated_boat_image, boat_rect.topleft)
 
     # Check for collisions

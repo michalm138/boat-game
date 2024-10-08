@@ -37,6 +37,14 @@ boat_image = pygame.transform.scale(boat_image, BOAT_SIZE)
 heart_image = pygame.image.load(str(MEDIA_DIR / "heart.png"))
 heart_image = pygame.transform.scale(heart_image, (32, 32))
 
+# Load the bullet image
+bullet_image = pygame.image.load(str(MEDIA_DIR / "bullet.png"))
+bullet_image = pygame.transform.scale(bullet_image, (10, 10))  # Scale the bullet image if necessary
+
+# Load the boom image
+boom_image = pygame.image.load(str(MEDIA_DIR / "boom.png"))
+boom_image = pygame.transform.scale(boom_image, (64, 64))  # Scale the boom image if necessary
+
 # Set up the boat's starting position
 boat_start_x = WIDTH // 2 - BOAT_SIZE[0] // 2
 boat_start_y = HEIGHT // 2 - BOAT_SIZE[1] // 2
@@ -55,11 +63,9 @@ boat_direction = RIGHT
 # Number of hearts (lives)
 hearts = 3
 
-
 # Function to rotate the boat image
 def rotate_boat_image(image, angle):
     return pygame.transform.rotate(image, angle)
-
 
 # Function to check for collisions
 def check_collision(boat_rect, obstacles):
@@ -67,7 +73,6 @@ def check_collision(boat_rect, obstacles):
         if not obstacle.warning_active and boat_rect.colliderect(obstacle.rect):
             return True
     return False
-
 
 # Function to flash the screen with a semi-transparent red overlay
 def flash_screen(screen, color, alpha, duration):
@@ -79,7 +84,6 @@ def flash_screen(screen, color, alpha, duration):
         pygame.display.flip()
         pygame.time.delay(50)
 
-
 # Function to display game over screen
 def display_game_over(screen):
     font = pygame.font.Font(None, 74)
@@ -89,7 +93,6 @@ def display_game_over(screen):
     pygame.display.flip()
     pygame.time.delay(2000)
 
-
 # Define obstacle class
 class Obstacle:
     def __init__(self):
@@ -98,7 +101,8 @@ class Obstacle:
         self.height = random.randint(50, 100)
         self.x = random.randint(0, WIDTH - self.width)
         self.y = random.randint(0, HEIGHT - self.height)
-        self.lifetime = 300  # Obstacles disappear after 300 frames (5 seconds)
+        self.lifetime = 600  # Obstacles disappear after 300 frames (5 seconds)
+        self.hit_count = 5  # Obstacles require 5 hits to be destroyed
 
         # Warning phase settings
         self.warning_duration = 100  # The warning lasts for 100 frames
@@ -135,9 +139,57 @@ class Obstacle:
     def rect(self):
         return pygame.Rect(self.x, self.y, self.width, self.height)
 
+# Define bullet class
+class Bullet:
+    def __init__(self, x, y, direction):
+        self.x = x
+        self.y = y
+        self.direction = direction
+        self.speed = 10
+        self.image = bullet_image
+
+    def update(self):
+        if self.direction == UP:
+            self.y -= self.speed
+        elif self.direction == DOWN:
+            self.y += self.speed
+        elif self.direction == LEFT:
+            self.x -= self.speed
+        elif self.direction == RIGHT:
+            self.x += self.speed
+
+    def draw(self, screen):
+        screen.blit(self.image, (self.x, self.y))
+
+    @property
+    def rect(self):
+        return pygame.Rect(self.x, self.y, self.image.get_width(), self.image.get_height())
+
+# Define boom class
+class Boom:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.image = boom_image
+        self.lifetime = 30  # Boom effect lasts for 30 frames
+
+    def update(self):
+        self.lifetime -= 1
+
+    def draw(self, screen):
+        screen.blit(self.image, (self.x, self.y))
+
+    def is_expired(self):
+        return self.lifetime <= 0
 
 # List to store obstacles
 obstacles = []
+
+# List to store bullets
+bullets = []
+
+# List to store boom effects
+booms = []
 
 # Timer for obstacle spawning
 obstacle_timer = 0
@@ -154,6 +206,12 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                # Shoot a bullet
+                bullet_x = boat_x + BOAT_SIZE[0] // 2 - bullet_image.get_width() // 2
+                bullet_y = boat_y + BOAT_SIZE[1] // 2 - bullet_image.get_height() // 2
+                bullets.append(Bullet(bullet_x, bullet_y, boat_direction))
 
     # Boat movement
     keys = pygame.key.get_pressed()
@@ -193,6 +251,37 @@ while running:
         # Remove obstacles once their lifetime has expired
         if obstacle.is_expired():
             obstacles.remove(obstacle)
+
+    # Update and draw bullets
+    for bullet in bullets:
+        bullet.update()
+        bullet.draw(screen)
+
+        # Check for bullet collisions with obstacles
+        for obstacle in obstacles:
+            if bullet.rect.colliderect(obstacle.rect):
+                obstacle.hit_count -= 1
+                bullets.remove(bullet)
+                if obstacle.hit_count <= 0:
+                    # Calculate the center position of the obstacle for the boom effect
+                    boom_x = obstacle.x + obstacle.width // 2 - boom_image.get_width() // 2
+                    boom_y = obstacle.y + obstacle.height // 2 - boom_image.get_height() // 2
+                    booms.append(Boom(boom_x, boom_y))
+                    obstacles.remove(obstacle)
+                break
+
+        # Remove bullets that go off-screen
+        if bullet.x < 0 or bullet.x > WIDTH or bullet.y < 0 or bullet.y > HEIGHT:
+            bullets.remove(bullet)
+
+    # Update and draw boom effects
+    for boom in booms:
+        boom.update()
+        boom.draw(screen)
+
+        # Remove boom effects once their lifetime has expired
+        if boom.is_expired():
+            booms.remove(boom)
 
     # Draw the rotated boat image
     boat_rect = rotated_boat_image.get_rect(center=(boat_x + BOAT_SIZE[0] // 2, boat_y + BOAT_SIZE[1] // 2))

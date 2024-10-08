@@ -45,6 +45,10 @@ bullet_image = pygame.transform.scale(bullet_image, (10, 10))  # Scale the bulle
 boom_image = pygame.image.load(str(MEDIA_DIR / "boom.png"))
 boom_image = pygame.transform.scale(boom_image, (64, 64))  # Scale the boom image if necessary
 
+# Load the pirate boat image
+pirate_boat_image = pygame.image.load(str(MEDIA_DIR / "pirate-boat.png"))
+pirate_boat_image = pygame.transform.scale(pirate_boat_image, BOAT_SIZE)
+
 # Set up the boat's starting position
 boat_start_x = WIDTH // 2 - BOAT_SIZE[0] // 2
 boat_start_y = HEIGHT // 2 - BOAT_SIZE[1] // 2
@@ -63,9 +67,14 @@ boat_direction = RIGHT
 # Number of hearts (lives)
 hearts = 3
 
+# Points counter
+points = 0
+
+
 # Function to rotate the boat image
 def rotate_boat_image(image, angle):
     return pygame.transform.rotate(image, angle)
+
 
 # Function to check for collisions
 def check_collision(boat_rect, obstacles):
@@ -73,6 +82,7 @@ def check_collision(boat_rect, obstacles):
         if not obstacle.warning_active and boat_rect.colliderect(obstacle.rect):
             return True
     return False
+
 
 # Function to flash the screen with a semi-transparent red overlay
 def flash_screen(screen, color, alpha, duration):
@@ -84,6 +94,7 @@ def flash_screen(screen, color, alpha, duration):
         pygame.display.flip()
         pygame.time.delay(50)
 
+
 # Function to display game over screen
 def display_game_over(screen):
     font = pygame.font.Font(None, 74)
@@ -93,6 +104,17 @@ def display_game_over(screen):
     pygame.display.flip()
     pygame.time.delay(2000)
 
+
+# Function to display win screen
+def display_win_screen(screen):
+    font = pygame.font.Font(None, 74)
+    text = font.render("You Win!", True, (0, 255, 0))
+    text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+    screen.blit(text, text_rect)
+    pygame.display.flip()
+    pygame.time.delay(2000)
+
+
 # Define obstacle class
 class Obstacle:
     def __init__(self):
@@ -101,8 +123,8 @@ class Obstacle:
         self.height = random.randint(50, 100)
         self.x = random.randint(0, WIDTH - self.width)
         self.y = random.randint(0, HEIGHT - self.height)
-        self.lifetime = 600  # Obstacles disappear after 300 frames (5 seconds)
-        self.hit_count = 5  # Obstacles require 5 hits to be destroyed
+        self.lifetime = 900  # Obstacles disappear after 900 frames (15 seconds)
+        self.hit_count = 8  # Obstacles require 8 hits to be destroyed
 
         # Warning phase settings
         self.warning_duration = 100  # The warning lasts for 100 frames
@@ -126,8 +148,10 @@ class Obstacle:
 
     def draw(self, screen):
         if self.warning_active:
+            # Add shaking effect
+            shake_offset = random.randint(-5, 5)
             self.warning_image.set_alpha(self.warning_alpha)
-            screen.blit(self.warning_image, (self.warning_x, self.warning_y))
+            screen.blit(self.warning_image, (self.warning_x + shake_offset, self.warning_y + shake_offset))
         else:
             screen.blit(self.obstacle_image, (self.x, self.y))
 
@@ -138,6 +162,7 @@ class Obstacle:
     @property
     def rect(self):
         return pygame.Rect(self.x, self.y, self.width, self.height)
+
 
 # Define bullet class
 class Bullet:
@@ -165,6 +190,7 @@ class Bullet:
     def rect(self):
         return pygame.Rect(self.x, self.y, self.image.get_width(), self.image.get_height())
 
+
 # Define boom class
 class Boom:
     def __init__(self, x, y):
@@ -182,6 +208,31 @@ class Boom:
     def is_expired(self):
         return self.lifetime <= 0
 
+
+# Define pirate boat class
+class PirateBoat:
+    def __init__(self):
+        self.width = BOAT_SIZE[0]
+        self.height = BOAT_SIZE[1]
+        self.x = random.randint(0, WIDTH - self.width)
+        self.y = random.randint(0, HEIGHT - self.height)
+        self.lifetime = 300  # Pirate boat appears for 5 seconds (300 frames)
+        self.hit_count = 3  # Pirate boat requires 3 hits to be destroyed
+
+    def update(self):
+        self.lifetime -= 1
+
+    def draw(self, screen):
+        screen.blit(pirate_boat_image, (self.x, self.y))
+
+    def is_expired(self):
+        return self.lifetime <= 0
+
+    @property
+    def rect(self):
+        return pygame.Rect(self.x, self.y, self.width, self.height)
+
+
 # List to store obstacles
 obstacles = []
 
@@ -191,9 +242,16 @@ bullets = []
 # List to store boom effects
 booms = []
 
+# List to store pirate boats
+pirate_boats = []
+
 # Timer for obstacle spawning
 obstacle_timer = 0
 obstacle_spawn_rate = INITIAL_OBSTACLE_SPAWN_RATE
+
+# Timer for pirate boat spawning
+pirate_boat_timer = 0
+pirate_boat_spawn_interval = 600  # Pirate boat spawns every 10 seconds (600 frames)
 
 # Game loop
 running = True
@@ -243,6 +301,14 @@ while running:
         obstacles.append(Obstacle())
         obstacle_timer = 0
 
+    # Increment the pirate boat timer
+    pirate_boat_timer += 1
+
+    # Generate a pirate boat at regular intervals
+    if pirate_boat_timer >= pirate_boat_spawn_interval:
+        pirate_boats.append(PirateBoat())
+        pirate_boat_timer = 0
+
     # Update and draw obstacles
     for obstacle in obstacles:
         obstacle.update()
@@ -270,6 +336,20 @@ while running:
                     obstacles.remove(obstacle)
                 break
 
+        # Check for bullet collisions with pirate boats
+        for pirate_boat in pirate_boats:
+            if bullet.rect.colliderect(pirate_boat.rect):
+                pirate_boat.hit_count -= 1
+                bullets.remove(bullet)
+                if pirate_boat.hit_count <= 0:
+                    # Calculate the center position of the pirate boat for the boom effect
+                    boom_x = pirate_boat.x + pirate_boat.width // 2 - boom_image.get_width() // 2
+                    boom_y = pirate_boat.y + pirate_boat.height // 2 - boom_image.get_height() // 2
+                    booms.append(Boom(boom_x, boom_y))
+                    pirate_boats.remove(pirate_boat)
+                    points += 1  # Increase points counter
+                break
+
         # Remove bullets that go off-screen
         if bullet.x < 0 or bullet.x > WIDTH or bullet.y < 0 or bullet.y > HEIGHT:
             bullets.remove(bullet)
@@ -282,6 +362,15 @@ while running:
         # Remove boom effects once their lifetime has expired
         if boom.is_expired():
             booms.remove(boom)
+
+    # Update and draw pirate boats
+    for pirate_boat in pirate_boats:
+        pirate_boat.update()
+        pirate_boat.draw(screen)
+
+        # Remove pirate boats once their lifetime has expired
+        if pirate_boat.is_expired():
+            pirate_boats.remove(pirate_boat)
 
     # Draw the rotated boat image
     boat_rect = rotated_boat_image.get_rect(center=(boat_x + BOAT_SIZE[0] // 2, boat_y + BOAT_SIZE[1] // 2))
@@ -300,6 +389,16 @@ while running:
     # Draw hearts (lives)
     for i in range(hearts):
         screen.blit(heart_image, (10 + i * 40, 10))
+
+    # Draw points counter
+    font = pygame.font.Font(None, 36)
+    points_text = font.render(f"Points: {points}", True, WHITE)
+    screen.blit(points_text, (WIDTH - 150, 10))
+
+    # Check for win condition
+    if points >= 10:
+        display_win_screen(screen)
+        running = False  # End the game loop
 
     # Update the display
     pygame.display.flip()

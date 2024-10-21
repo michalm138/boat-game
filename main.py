@@ -6,9 +6,9 @@ from pathlib import Path
 pygame.init()
 
 # Constants
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1400, 800
 FPS = 60
-BOAT_SIZE = (64, 64)  # Fixed boat dimensions
+BOAT_SIZE = (100, 100)  # Fixed boat dimensions
 INITIAL_OBSTACLE_SPAWN_RATE = 120  # Initial obstacle spawn rate (in frames)
 MEDIA_DIR = Path(__file__).parent / "media"
 
@@ -20,7 +20,6 @@ background_image = pygame.transform.scale(
 
 # Colors
 WHITE = (255, 255, 255)
-SHADOW_COLOR = (0, 0, 0, 100)  # Semi-transparent black for shadows
 
 # Objects
 MOUNTAIN_IMAGE = pygame.image.load(str(MEDIA_DIR / "mountain.png"))
@@ -125,8 +124,8 @@ def display_win_screen(screen):
 class Obstacle:
     def __init__(self):
         # Randomly position and size the obstacle
-        self.width = random.randint(50, 100)
-        self.height = random.randint(50, 100)
+        self.width = random.randint(100, 150)
+        self.height = random.randint(100, 150)
         self.x = random.randint(0, WIDTH - self.width)
         self.y = random.randint(0, HEIGHT - self.height)
         self.lifetime = 900  # Obstacles disappear after 900 frames (15 seconds)

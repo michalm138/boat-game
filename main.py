@@ -8,7 +8,7 @@ pygame.init()
 # Constants
 WIDTH, HEIGHT = 1400, 800
 FPS = 60
-BOAT_SIZE = (100, 100)  # Fixed boat dimensions
+BOAT_SIZE = (90, 90)  # Fixed boat dimensions
 INITIAL_OBSTACLE_SPAWN_RATE = 120  # Initial obstacle spawn rate (in frames)
 MEDIA_DIR = Path(__file__).parent / "media"
 
@@ -224,6 +224,43 @@ class Boom:
         return self.lifetime <= 0
 
 
+# Define pirate bullet class
+class PirateBullet:
+    def __init__(self, x, y, target_x, target_y):
+        self.x = x
+        self.y = y
+        self.target_x = target_x
+        self.target_y = target_y
+        self.speed = 5
+        self.image = bullet_image
+
+        # Calculate direction vector
+        dx = target_x - x
+        dy = target_y - y
+        distance = (dx**2 + dy**2) ** 0.5
+        self.direction_x = dx / distance
+        self.direction_y = dy / distance
+
+    def update(self):
+        self.x += self.direction_x * self.speed
+        self.y += self.direction_y * self.speed
+
+    def draw(self, screen):
+        screen.blit(self.image, (self.x, self.y))
+
+    def check_collision_with_obstacles(self, obstacles):
+        for obstacle in obstacles:
+            if self.rect.colliderect(obstacle.rect):
+                return True
+        return False
+
+    @property
+    def rect(self):
+        return pygame.Rect(
+            self.x, self.y, self.image.get_width(), self.image.get_height()
+        )
+
+
 # Define pirate boat class
 class PirateBoat:
     def __init__(self):
@@ -231,11 +268,23 @@ class PirateBoat:
         self.height = BOAT_SIZE[1]
         self.x = random.randint(0, WIDTH - self.width)
         self.y = random.randint(0, HEIGHT - self.height)
-        self.lifetime = 300  # Pirate boat appears for 5 seconds (300 frames)
+        self.lifetime = 420  # Pirate boat appears for 7 seconds (300 frames)
         self.hit_count = 3  # Pirate boat requires 3 hits to be destroyed
+        self.fire_rate = 60  # Fire a bullet every 60 frames (1 second)
+        self.fire_timer = 0
 
     def update(self):
         self.lifetime -= 1
+        self.fire_timer += 1
+        if self.fire_timer >= self.fire_rate:
+            self.fire_timer = 0
+            return self.fire_bullet()
+        return None
+
+    def fire_bullet(self):
+        return PirateBullet(
+            self.x + self.width // 2, self.y + self.height // 2, boat_x, boat_y
+        )
 
     def draw(self, screen):
         screen.blit(pirate_boat_image, (self.x, self.y))
@@ -259,6 +308,9 @@ booms = []
 
 # List to store pirate boats
 pirate_boats = []
+
+# List to store pirate bullets
+pirate_bullets = []
 
 # Timer for obstacle spawning
 obstacle_timer = 0
@@ -392,7 +444,9 @@ while running:
 
     # Update and draw pirate boats
     for pirate_boat in pirate_boats:
-        pirate_boat.update()
+        new_bullet = pirate_boat.update()
+        if new_bullet:
+            pirate_bullets.append(new_bullet)
         pirate_boat.draw(screen)
 
         # Remove pirate boats once their lifetime has expired
@@ -404,6 +458,38 @@ while running:
         center=(boat_x + BOAT_SIZE[0] // 2, boat_y + BOAT_SIZE[1] // 2)
     )
     screen.blit(rotated_boat_image, boat_rect.topleft)
+
+    # Update and draw pirate bullets
+    for pirate_bullet in pirate_bullets:
+        pirate_bullet.update()
+        pirate_bullet.draw(screen)
+
+        # Check for collisions with obstacles
+        if pirate_bullet.check_collision_with_obstacles(obstacles):
+            pirate_bullets.remove(pirate_bullet)
+            continue
+
+        # Check for collisions with the player's boat
+        if pirate_bullet.rect.colliderect(boat_rect):
+            flash_screen(
+                screen, (255, 0, 0), 20, 8
+            )  # Flash the screen red for 10 frames
+            boat_x = boat_start_x  # Reset boat position
+            boat_y = boat_start_y
+            hearts -= 1  # Decrease the number of hearts
+            pirate_bullets.remove(pirate_bullet)
+            if hearts == 0:
+                display_game_over(screen)  # Display game over screen
+                running = False  # End the game loop
+
+        # Remove bullets that go off-screen
+        if (
+            pirate_bullet.x < 0
+            or pirate_bullet.x > WIDTH
+            or pirate_bullet.y < 0
+            or pirate_bullet.y > HEIGHT
+        ):
+            pirate_bullets.remove(pirate_bullet)
 
     # Check for collisions
     if check_collision(boat_rect, obstacles):

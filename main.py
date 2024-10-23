@@ -70,7 +70,7 @@ RIGHT = -90
 boat_direction = RIGHT
 
 # Number of hearts (lives)
-hearts = 3
+hearts = 5
 
 # Points counter
 points = 0
@@ -81,11 +81,14 @@ def rotate_boat_image(image, angle):
     return pygame.transform.rotate(image, angle)
 
 
-# Function to check for collisions
+# Function to check for collisions using masks
 def check_collision(boat_rect, obstacles):
+    boat_mask = pygame.mask.from_surface(rotated_boat_image)
     for obstacle in obstacles:
-        if not obstacle.warning_active and boat_rect.colliderect(obstacle.rect):
-            return True
+        if not obstacle.warning_active:
+            offset = (obstacle.rect.x - boat_rect.x, obstacle.rect.y - boat_rect.y)
+            if boat_mask.overlap(obstacle.mask, offset):
+                return True
     return False
 
 
@@ -146,6 +149,9 @@ class Obstacle:
             MOUNTAIN_IMAGE, (self.width, self.height)
         )
 
+        # Create a mask for the obstacle image
+        self._mask = pygame.mask.from_surface(self.obstacle_image)
+
         # Position the warning image at the center of where the full obstacle will be
         self.warning_x = self.x + self.width // 4  # Center the warning horizontally
         self.warning_y = self.y + self.height // 4  # Center the warning vertically
@@ -175,6 +181,10 @@ class Obstacle:
     @property
     def rect(self):
         return pygame.Rect(self.x, self.y, self.width, self.height)
+
+    @property
+    def mask(self):
+        return self._mask
 
 
 # Define bullet class

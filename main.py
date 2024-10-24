@@ -9,7 +9,7 @@ pygame.init()
 WIDTH, HEIGHT = 1400, 800
 FPS = 60
 BOAT_SIZE = (90, 90)  # Fixed boat dimensions
-INITIAL_OBSTACLE_SPAWN_RATE = 120  # Initial obstacle spawn rate (in frames)
+INITIAL_OBSTACLE_SPAWN_RATE = 110  # Initial obstacle spawn rate (in frames)
 MEDIA_DIR = Path(__file__).parent / "media"
 
 # Load the background image
@@ -126,11 +126,17 @@ def display_win_screen(screen):
 # Define obstacle class
 class Obstacle:
     def __init__(self):
-        # Randomly position and size the obstacle
-        self.width = random.randint(100, 150)
-        self.height = random.randint(100, 150)
-        self.x = random.randint(0, WIDTH - self.width)
-        self.y = random.randint(0, HEIGHT - self.height)
+        while True:
+            # Randomly position and size the obstacle
+            self.width = random.randint(100, 150)
+            self.height = random.randint(100, 150)
+            self.x = random.randint(0, WIDTH - self.width)
+            self.y = random.randint(0, HEIGHT - self.height)
+
+            # Check for overlap with existing obstacles
+            if not any(self.overlaps_with(obstacle) for obstacle in obstacles):
+                break
+
         self.lifetime = 900  # Obstacles disappear after 900 frames (15 seconds)
         self.hit_count = 8  # Obstacles require 8 hits to be destroyed
 
@@ -155,6 +161,9 @@ class Obstacle:
         # Position the warning image at the center of where the full obstacle will be
         self.warning_x = self.x + self.width // 4  # Center the warning horizontally
         self.warning_y = self.y + self.height // 4  # Center the warning vertically
+
+    def overlaps_with(self, other):
+        return self.rect.colliderect(other.rect)
 
     def update(self):
         if self.warning_active:

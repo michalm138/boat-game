@@ -88,8 +88,8 @@ def check_collision(boat_rect, obstacles):
         if not obstacle.warning_active:
             offset = (obstacle.rect.x - boat_rect.x, obstacle.rect.y - boat_rect.y)
             if boat_mask.overlap(obstacle.mask, offset):
-                return True
-    return False
+                return obstacle
+    return None
 
 
 # Function to flash the screen with a semi-transparent red overlay
@@ -511,11 +511,18 @@ while running:
             pirate_bullets.remove(pirate_bullet)
 
     # Check for collisions
-    if check_collision(boat_rect, obstacles):
+    colliding_obstacle = check_collision(boat_rect, obstacles)
+    if colliding_obstacle:
         flash_screen(screen, (255, 0, 0), 20, 8)  # Flash the screen red for 10 frames
         boat_x = boat_start_x  # Reset boat position
         boat_y = boat_start_y
         hearts -= 1  # Decrease the number of hearts
+        if colliding_obstacle.rect.colliderect(
+            pygame.Rect(boat_start_x, boat_start_y, BOAT_SIZE[0], BOAT_SIZE[1])
+        ):
+            obstacles.remove(
+                colliding_obstacle
+            )  # Remove the colliding obstacle if in spawn location
         if hearts == 0:
             display_game_over(screen)  # Display game over screen
             running = False  # End the game loop

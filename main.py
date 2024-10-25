@@ -75,6 +75,20 @@ hearts = 5
 # Points counter
 points = 0
 
+# Load the red cross image
+red_cross_image = pygame.image.load(str(MEDIA_DIR / "red-cross.png"))
+red_cross_image = pygame.transform.scale(red_cross_image, (25, 25))
+
+# List to store the status of each pirate boat (False means not eliminated, True means eliminated)
+pirate_boat_status = [False] * 10
+
+# Scale down the pirate boat image
+small_pirate_boat_image = pygame.transform.scale(pirate_boat_image, (40, 40))
+
+# Create a semi-transparent version of the small pirate boat image
+semi_transparent_pirate_boat_image = small_pirate_boat_image.copy()
+semi_transparent_pirate_boat_image.set_alpha(128)  # 128 is 50% transparency
+
 
 # Function to rotate the boat image
 def rotate_boat_image(image, angle):
@@ -121,6 +135,14 @@ def display_win_screen(screen):
     screen.blit(text, text_rect)
     pygame.display.flip()
     pygame.time.delay(2000)
+
+
+# Function to update the pirate boat status
+def update_pirate_boat_status():
+    for i in range(len(pirate_boat_status)):
+        if not pirate_boat_status[i]:
+            pirate_boat_status[i] = True
+            break
 
 
 # Define obstacle class
@@ -446,6 +468,7 @@ while running:
                     booms.append(Boom(boom_x, boom_y))
                     pirate_boats.remove(pirate_boat)
                     points += 1  # Increase points counter
+                    update_pirate_boat_status()  # Update the pirate boat status
                 break
 
         # Remove bullets that go off-screen
@@ -531,10 +554,17 @@ while running:
     for i in range(hearts):
         screen.blit(heart_image, (10 + i * 40, 10))
 
-    # Draw points counter
-    font = pygame.font.Font(None, 36)
-    points_text = font.render(f"Points: {points}", True, WHITE)
-    screen.blit(points_text, (WIDTH - 150, 10))
+    # Draw pirate boat icons and red crosses
+    for i in range(10):
+        if pirate_boat_status[i]:
+            # Draw the pirate boat without transparency
+            screen.blit(small_pirate_boat_image, (WIDTH - 430 + i * 40, 10))
+            cross_x = WIDTH - 430 + i * 40 + 8  # Center the cross on the pirate boat
+            cross_y = 10 + 8  # Center the cross on the pirate boat
+            screen.blit(red_cross_image, (cross_x, cross_y))
+        else:
+            # Draw the semi-transparent pirate boat
+            screen.blit(semi_transparent_pirate_boat_image, (WIDTH - 430 + i * 40, 10))
 
     # Check for win condition
     if points >= 10:
